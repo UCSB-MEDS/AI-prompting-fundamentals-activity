@@ -1,0 +1,99 @@
+---
+title: "Prompt Makeover Activity"
+subtitle: "AI for Environmental Data Science · Prompting Fundamentals"
+format: html
+---
+
+## Setup
+
+> **Rounds:** 1) weak prompt · 2) add context + constraints · 3) assumptions first · 4) verify with `check_cleaning()`
+>
+> Start a fresh AI chat for each round.
+
+```{r}
+#| message: false
+library(tidyverse)
+```
+
+Update the path and column name to match your copy of the [2020 NYC Park Squirrel Census](https://data.cityofnewyork.us/Environment/2018-Central-Park-Squirrel-Census-Squirrel-Data/vfnx-vebp) from NYC Open Data.
+
+```{r}
+squirrels  <- read_csv("squirrel-data.csv") |> janitor::clean_names()
+height_col <- "above_ground_height_in_feet"
+```
+
+## Context for Round 2
+
+Paste this output into your Round 2 prompt.
+
+```{r}
+glimpse(squirrels)
+```
+
+## Context for Round 3
+
+Paste this output into your Round 3 prompt.
+
+```{r}
+squirrels |> count(.data[[height_col]], sort = TRUE) |> print(n = 30)
+```
+
+## Paste AI-written cleaning code
+
+### Round 1
+
+```{r}
+clean_r1 <-
+```
+
+### Round 2
+
+```{r}
+clean_r2 <-
+```
+
+### Round 3
+
+```{r}
+clean_r3 <-
+```
+
+## Round 4: Verify with `check_cleaning()`
+
+```{r}
+check_cleaning <- function(before, after, orig_col) {
+  new_num_cols <- names(after)[
+    sapply(names(after), function(n) {
+      is.numeric(after[[n]]) && (!n %in% names(before) || !is.numeric(before[[n]]))
+    })
+  ]
+  if (length(new_num_cols) == 0) stop("No new numeric column found in cleaned data")
+  if (length(new_num_cols) > 1)  message("Multiple candidates: ", paste(new_num_cols, collapse = ", "), " — using '", new_num_cols[1], "'")
+  after_col <- new_num_cols[1]
+
+  tibble::tibble(
+    cleaned_col   = after_col,
+    rows_before   = nrow(before),
+    rows_after    = nrow(after),
+    na_before     = sum(is.na(before[[orig_col]])),
+    na_after      = sum(is.na(after[[after_col]])),
+    values_before = dplyr::n_distinct(before[[orig_col]]),
+    values_after  = dplyr::n_distinct(after[[after_col]])
+  )
+}
+
+bind_rows(
+  round_1 = check_cleaning(squirrels, clean_r1, height_col),
+  round_3 = check_cleaning(squirrels, clean_r3, height_col),
+  .id = "round"
+)
+```
+
+Which original values ended up `NA` in your new numeric column? Replace `height_num` with the column the AI created.
+
+```{r}
+#| eval: false
+clean_r3 |>
+  filter(is.na(height_num), !is.na(.data[[height_col]])) |>
+  count(.data[[height_col]], sort = TRUE)
+```
